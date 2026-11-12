@@ -72,7 +72,7 @@
               No chat loaded
             </span>
           </div>
-          <p class="text-[11px] text-emerald-100/90 truncate">Built by <span class="font-semibold text-white">Kartik Chaudhary</span> <span class="hidden sm:inline text-emerald-100/75">&bull; 100% local in-browser filter</span></p>
+          <p class="text-[11px] text-emerald-100/80 hidden sm:block">100% local in-browser WhatsApp chat filter</p>
         </div>
       </div>
 
@@ -115,8 +115,14 @@
   <main class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-5 py-4 flex flex-col gap-4">
 
     <!-- Engaging Welcome Screen (shown before any chat is loaded) -->
-    <section id="welcomeScreen" class="flex-1 flex flex-col items-center justify-center py-6 sm:py-10">
-      <div class="w-full max-w-3xl flex flex-col gap-6">
+    <section id="welcomeScreen" class="flex-1 flex flex-col items-center justify-center py-4 sm:py-8">
+      <div class="w-full max-w-3xl flex flex-col gap-4 sm:gap-6">
+        <div class="flex justify-center">
+          <span class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold bg-white dark:bg-wa-darkPanel text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 shadow-xs">
+            <span class="w-2 h-2 rounded-full bg-wa-teal dark:bg-emerald-400"></span>
+            Built by <span class="text-wa-teal dark:text-emerald-400 font-bold">Kartik Chaudhary</span>
+          </span>
+        </div>
 
         <!-- Hero Card + Dropzone -->
         <div id="dropZone" class="relative overflow-hidden rounded-3xl border-2 border-dashed border-emerald-500/50 dark:border-emerald-400/40 bg-gradient-to-br from-white via-emerald-50/60 to-teal-50/80 dark:from-wa-darkPanel dark:via-emerald-950/30 dark:to-slate-900 p-6 sm:p-10 text-center shadow-lg transition-all duration-200">
@@ -178,6 +184,10 @@
 
     <!-- Active Chat Workspace (hidden until a chat is imported) -->
     <div id="workspaceArea" class="hidden flex-col gap-4 flex-1">
+      <div class="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 px-1">
+        <span>Built by <strong class="text-slate-700 dark:text-slate-200">Kartik Chaudhary</strong></span>
+        <span class="hidden sm:inline">100% Offline &bull; Private</span>
+      </div>
 
     <!-- View Switcher + Summary Stats -->
     <div class="flex flex-wrap items-center justify-between gap-3">
