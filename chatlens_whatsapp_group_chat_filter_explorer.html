@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ChatLens — WhatsApp Group Chat Filter &amp; Explorer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+          colors: {
+            wa: {
+              teal: '#008069',
+              darkTeal: '#005c4b',
+              light: '#d9fdd3',
+              bg: '#efeae2',
+              darkBg: '#0b141a',
+              darkPanel: '#111b21',
+              darkBubble: '#202c33',
+              darkSelf: '#005c4b'
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .chat-pattern {
+      background-color: #efeae2;
+      background-image: radial-gradient(rgba(0, 0, 0, 0.045) 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+    .dark .chat-pattern {
+      background-color: #0b141a;
+      background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    mark {
+      background-color: #fef08a;
+      color: #111827;
+      padding: 0 2px;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 dark:bg-wa-darkBg dark:text-slate-100 min-h-screen flex flex-col">
+
+  <!-- Top Header -->
+  <header class="sticky top-0 z-30 bg-wa-teal dark:bg-wa-darkPanel text-white border-b border-emerald-700/30 dark:border-slate-800 shadow-sm">
+    <div class="max-w-7xl mx-auto px-3 sm:px-5 h-14 flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <div class="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+          </svg>
+        </div>
+        <div class="min-w-0">
+          <div class="flex items-center gap-2">
+            <h1 class="font-bold text-base sm:text-lg tracking-tight truncate">ChatLens</h1>
+            <span id="datasetBadge" class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-white/15 text-emerald-50 truncate max-w-[180px]">
+              Sample Group Chat
+            </span>
+          </div>
+          <p class="text-[11px] text-emerald-100/80 hidden sm:block">100% local in-browser WhatsApp chat filter</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <label for="fileInput" class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-wa-teal font-semibold text-xs sm:text-sm hover:bg-emerald-50 transition shadow-sm">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+          </svg>
+          <span>Import Chat</span>
+        </label>
+        <input id="fileInput" type="file" accept=".txt,.zip" class="hidden" />
+
+        <button id="pasteBtn" type="button" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white text-xs sm:text-sm font-medium transition" title="Paste raw chat text">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+          </svg>
+          <span class="hidden md:inline">Paste Text</span>
+        </button>
+
+        <button id="themeToggle" type="button" class="p-2 rounded-lg bg-white/15 hover:bg-white/25 text-white transition" title="Toggle dark mode" aria-label="Toggle dark mode">
+          <svg id="sunIcon" class="w-4 h-4 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+          </svg>
+          <svg id="moonIcon" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-5 py-4 flex flex-col gap-4">
+
+    <!-- Drag & Drop Banner (collapsible) -->
+    <div id="dropZone" class="border-2 border-dashed border-emerald-500/40 dark:border-emerald-500/30 bg-emerald-50/70 dark:bg-emerald-950/20 rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition">
+      <div class="flex items-start sm:items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-emerald-600/15 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+          </svg>
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-slate-800 dark:text-slate-100">Drop your WhatsApp <code class="px-1.5 py-0.5 rounded bg-white/80 dark:bg-slate-800 text-xs">.txt</code> or <code class="px-1.5 py-0.5 rounded bg-white/80 dark:bg-slate-800 text-xs">.zip</code> export here</p>
+          <p class="text-xs text-slate-600 dark:text-slate-400">WhatsApp &rarr; Group Info &rarr; Export Chat &rarr; Without Media. Runs 100% offline in your browser.</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 self-end sm:self-center">
+        <button id="loadSampleBtn" type="button" class="text-xs font-medium px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+          Reset Sample
+        </button>
+        <button id="hideDropBtn" type="button" class="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 px-2 py-1.5" title="Hide banner">
+          Dismiss
+        </button>
+      </div>
+    </div>
+
+    <!-- View Switcher + Summary Stats -->
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div class="inline-flex p-1 rounded-xl bg-slate-200/80 dark:bg-slate-800">
+        <button id="tabMessages" type="button" class="px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm transition">
+          Messages
+        </button>
+        <button id="tabInsights" type="button" class="px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition">
+          Insights &amp; Charts
+        </button>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2 text-xs">
+        <span id="statShowing" class="px-2.5 py-1 rounded-lg bg-white dark:bg-wa-darkPanel border border-slate-200 dark:border-slate-800 font-medium">
+          Showing 0 of 0
+        </span>
+        <span id="statWords" class="px-2.5 py-1 rounded-lg bg-white dark:bg-wa-darkPanel border border-slate-200 dark:border-slate-800 font-medium text-slate-600 dark:text-slate-300">
+          0 words
+        </span>
+        <button id="copyFilteredBtn" type="button" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white dark:bg-wa-darkPanel border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium transition">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+          </svg>
+          <span>Copy</span>
+        </button>
+        <button id="exportTxtBtn" type="button" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-wa-teal text-white hover:bg-wa-darkTeal font-medium transition">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+          </svg>
+          <span>Export .txt</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Filter Controls Card -->
+    <section class="bg-white dark:bg-wa-darkPanel rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-3.5 sm:p-4 flex flex-col gap-3.5">
+      <!-- Sender Quick Pills -->
+      <div class="flex flex-col gap-2">
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Filter by Sender</span>
+            <label class="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 cursor-pointer select-none">
+              <input id="multiSelectToggle" type="checkbox" class="rounded text-wa-teal focus:ring-wa-teal" />
+              <span>Multi-select</span>
+            </label>
+          </div>
+          <button id="clearFiltersBtn" type="button" class="hidden text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline">
+            Clear all filters
+          </button>
+        </div>
+        <div id="senderPills" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Search, Type, Date, Sort Row -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-2.5">
+        <!-- Keyword Search -->
+        <div class="lg:col-span-4 relative">
+          <svg class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <input id="searchInput" type="text" placeholder="Search messages or sender..." class="w-full pl-9 pr-8 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 focus:outline-none focus:ring-2 focus:ring-wa-teal" />
+          <button id="clearSearchBtn" type="button" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" aria-label="Clear search">
+            &times;
+          </button>
+        </div>
+
+        <!-- Message Type -->
+        <div class="lg:col-span-2">
+          <select id="typeFilter" class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 focus:outline-none focus:ring-2 focus:ring-wa-teal">
+            <option value="all">All Types</option>
+            <option value="text">Text Only</option>
+            <option value="media">Media / Omitted</option>
+            <option value="links">Contains Links</option>
+            <option value="deleted">Deleted</option>
+          </select>
+        </div>
+
+        <!-- Date From -->
+        <div class="lg:col-span-2">
+          <input id="dateFrom" type="date" aria-label="From date" class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 focus:outline-none focus:ring-2 focus:ring-wa-teal" />
+        </div>
+
+        <!-- Date To -->
+        <div class="lg:col-span-2">
+          <input id="dateTo" type="date" aria-label="To date" class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 focus:outline-none focus:ring-2 focus:ring-wa-teal" />
+        </div>
+
+        <!-- Sort + System Toggle -->
+        <div class="lg:col-span-2 flex items-center gap-2">
+          <select id="sortOrder" class="w-full px-2.5 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 focus:outline-none focus:ring-2 focus:ring-wa-teal">
+            <option value="asc">Oldest first</option>
+            <option value="desc">Newest first</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400">
+        <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+          <input id="showSystemToggle" type="checkbox" class="rounded text-wa-teal focus:ring-wa-teal" />
+          <span>Show system notices (added, left, encryption)</span>
+        </label>
+        <div id="activeFilterSummary" class="font-medium text-wa-teal dark:text-emerald-400"></div>
+      </div>
+    </section>
+
+    <!-- Messages View -->
+    <section id="messagesView" class="flex-1 flex flex-col">
+      <div id="chatFeed" class="chat-pattern rounded-2xl border border-slate-200 dark:border-slate-800 p-3 sm:p-5 min-h-[420px] max-h-[65vh] overflow-y-auto flex flex-col gap-2.5 shadow-inner">
+        <!-- Populated dynamically -->
+      </div>
+      <div id="loadMoreWrap" class="hidden mt-3 flex justify-center">
+        <button id="loadMoreBtn" type="button" class="px-4 py-2 rounded-xl bg-white dark:bg-wa-darkPanel border border-slate-200 dark:border-slate-700 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition shadow-sm">
+          Load more messages
+        </button>
+      </div>
+    </section>
+
+    <!-- Insights View -->
+    <section id="insightsView" class="hidden grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="bg-white dark:bg-wa-darkPanel rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
+        <h2 class="text-sm font-bold text-slate-800 dark:text-slate-100 mb-1">Top Senders (Filtered)</h2>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">Click any bar or sender pill to isolate their messages</p>
+        <div class="relative h-64">
+          <canvas id="senderChart"></canvas>
+        </div>
+      </div>
+
+      <div class="bg-white dark:bg-wa-darkPanel rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
+        <h2 class="text-sm font-bold text-slate-800 dark:text-slate-100 mb-1">Activity by Hour of Day</h2>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">Peak messaging hours for the current selection</p>
+        <div class="relative h-64">
+          <canvas id="hourChart"></canvas>
+        </div>
+      </div>
+
+      <div class="lg:col-span-2 bg-white dark:bg-wa-darkPanel rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm overflow-x-auto">
+        <h2 class="text-sm font-bold text-slate-800 dark:text-slate-100 mb-3">Participant Breakdown</h2>
+        <table class="w-full text-left text-xs sm:text-sm">
+          <thead>
+            <tr class="border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">
+              <th class="py-2 pr-3 font-semibold">Sender</th>
+              <th class="py-2 px-3 font-semibold text-right">Messages</th>
+              <th class="py-2 px-3 font-semibold text-right">Words</th>
+              <th class="py-2 px-3 font-semibold text-right">Media</th>
+              <th class="py-2 px-3 font-semibold text-right">Links</th>
+              <th class="py-2 pl-3 font-semibold text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody id="participantTableBody" class="divide-y divide-slate-100 dark:divide-slate-800">
+            <!-- Populated dynamically -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Paste Raw Chat Modal -->
+  <div id="pasteModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-wa-darkPanel rounded-2xl border border-slate-200 dark:border-slate-700 max-w-xl w-full p-5 shadow-xl flex flex-col gap-3">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-base">Paste WhatsApp Export Text</h3>
+        <button id="closePasteModal" type="button" class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-xl leading-none">&times;</button>
+      </div>
+      <p class="text-xs text-slate-500 dark:text-slate-400">Supports both Android (<code>DD/MM/YY, HH:MM - Name: msg</code>) and iOS (<code>[DD/MM/YY, HH:MM:SS] Name: msg</code>) formats.</p>
+      <textarea id="pasteTextarea" rows="8" placeholder="12/11/2026, 9:15 pm - Kartik: Hey everyone, what's the plan for tomorrow?&#10;12/11/2026, 9:16 pm - Tanmay: Let's meet at 10 AM!" class="w-full p-3 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-wa-teal font-mono"></textarea>
+      <div class="flex justify-end gap-2">
+        <button id="cancelPasteBtn" type="button" class="px-3.5 py-2 rounded-xl text-sm font-medium bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition">Cancel</button>
+        <button id="parsePasteBtn" type="button" class="px-4 py-2 rounded-xl text-sm font-semibold bg-wa-teal text-white hover:bg-wa-darkTeal transition">Parse &amp; Load</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 hidden px-4 py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs sm:text-sm font-medium shadow-lg transition"></div>
+
+  <script>
+    // Sample realistic group chat so the app is immediately useful on load
+    const SAMPLE_CHAT = `10/11/2026, 6:12 pm - Messages and calls are end-to-end encrypted. No one outside of this chat, not even WhatsApp, can read or listen to them.
+10/11/2026, 6:12 pm - Kartik created group "Project & Weekend Crew"
+10/11/2026, 6:14 pm - Kartik: Yo everyone! Created this group so we can finalize the presentation slides and weekend plan.
+10/11/2026, 6:15 pm - Tanmay: Nice! Finally a clean group without 500 spam forwards lol
+10/11/2026, 6:17 pm - Abhinav: Hey guys, are we still doing the 6x6 rule on the slides?
+10/11/2026, 6:18 pm - Kartik: Yes! Max 6 bullets per slide, 6 words per bullet. Keeps it super crisp.
+10/11/2026, 6:20 pm - Pooja: Makes sense. I'll take slides 3 and 4 on security tips.
+10/11/2026, 6:22 pm - Nitin: <Media omitted>
+10/11/2026, 6:23 pm - Nitin: Sharing the reference template I found earlier
+10/11/2026, 6:25 pm - Kartik: Looks clean! Also check this dataset link for stats: https://www.kaggle.com/datasets
+11/11/2026, 9:05 am - Tanmay: Morning guys. Who's coming to campus early?
+11/11/2026, 9:12 am - Kartik: Leaving Noida in 20 mins, should reach by 9:45.
+11/11/2026, 9:14 am - Abhinav: Wait for me at the gate, bringing my laptop.
+11/11/2026, 1:40 pm - Pooja: This message was deleted
+11/11/2026, 1:42 pm - Pooja: Uploaded the updated intro section to Drive!
+11/11/2026, 4:30 pm - Kartik: Just reviewed Pooja's part — looks solid. Nitin, can you add two charts on slide 5?
+11/11/2026, 4:35 pm - Nitin: On it, will push by 8 pm tonight.
+12/11/2026, 10:10 am - Tanmay: Anyone up for football after classes today?
+12/11/2026, 10:15 am - Kartik: Always down. 5:30 pm at the turf?
+12/11/2026, 10:16 am - Abhinav: Count me in!
+12/11/2026, 10:18 am - Nitin: Same, I'll bring an extra bottle of water.
+12/11/2026, 8:45 pm - Kartik: Great game today! Here's the final checklist for tomorrow:
+1. Rehearse intro (2 mins)
+2. Test projector HDMI
+3. Keep backup PDF on USB
+12/11/2026, 8:50 pm - Pooja: Got it, see you all at 9 am sharp!`;
+
+    const SENDER_COLORS = [
+      'text-emerald-700 dark:text-emerald-400',
+      'text-sky-700 dark:text-sky-400',
+      'text-violet-700 dark:text-violet-400',
+      'text-amber-700 dark:text-amber-400',
+      'text-rose-700 dark:text-rose-400',
+      'text-teal-700 dark:text-teal-400',
+      'text-indigo-700 dark:text-indigo-400',
+      'text-fuchsia-700 dark:text-fuchsia-400'
+    ];
+
+    const state = {
+      allMessages: [],
+      filteredMessages: [],
+      senders: [], // { name, count, colorClass }
+      selectedSenders: new Set(), // empty = all
+      multiSelect: false,
+      searchQuery: '',
+      typeFilter: 'all',
+      dateFrom: '',
+      dateTo: '',
+      sortOrder: 'asc',
+      showSystem: false,
+      activeTab: 'messages',
+      renderLimit: 200,
+      datasetName: 'Sample Group Chat'
+    };
+
+    let senderChartInstance = null;
+    let hourChartInstance = null;
+
+    // DOM Elements
+    const el = (id) => document.getElementById(id);
+
+    function showToast(msg) {
+      const t = el('toast');
+      t.textContent = msg;
+      t.classList.remove('hidden');
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => t.classList.add('hidden'), 2600);
+    }
+
+    function escapeHtml(str) {
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // Parse various WhatsApp date strings into a Date object (best-effort)
+    function parseWhatsAppDate(dateStr, timeStr) {
+      try {
+        const cleanTime = timeStr.replace(/\u202f/g, ' ').trim();
+        const dateParts = dateStr.split(/[\/\-\.]/).map((p) => parseInt(p, 10));
+        let year, month, day;
+        if (dateParts[0] > 1900) {
+          // YYYY-MM-DD
+          [year, month, day] = dateParts;
+        } else if (dateParts[1] > 12) {
+          // MM/DD/YY
+          [month, day, year] = dateParts;
+        } else {
+          // DD/MM/YY (most common globally & in India)
+          [day, month, year] = dateParts;
+        }
+        if (year < 100) year += 2000;
+
+        const timeMatch = cleanTime.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?$/i);
+        let hours = 0, mins = 0, secs = 0;
+        if (timeMatch) {
+          hours = parseInt(timeMatch[1], 10);
+          mins = parseInt(timeMatch[2], 10);
+          secs = timeMatch[3] ? parseInt(timeMatch[3], 10) : 0;
+          const ampm = timeMatch[4] ? timeMatch[4].toLowerCase() : null;
+          if (ampm === 'pm' && hours < 12) hours += 12;
+          if (ampm === 'am' && hours === 12) hours = 0;
+        }
+        const d = new Date(year, (month || 1) - 1, day || 1, hours, mins, secs);
+        return isNaN(d.getTime()) ? null : d;
+      } catch {
+        return null;
+      }
+    }
+
+    function toIsoDate(d) {
+      if (!d) return '';
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    function parseWhatsAppText(rawText) {
+      const normalized = rawText.replace(/\r\n/g, '\n').replace(/\u202f/g, ' ').replace(/\u200e/g, '');
+      const lines = normalized.split('\n');
+
+      // Android: 12/11/2026, 9:45 pm - Sender: Message
+      const androidRe = /^(\d{1,4}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}),?\s+(\d{1,2}:\d{2}(?::\d{2})?(?:\s*[ap]m)?)\s+-\s+(.*)$/i;
+      // iOS: [12/11/2026, 9:45:12 PM] Sender: Message
+      const iosRe = /^\[(\d{1,4}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}),?\s+(\d{1,2}:\d{2}(?::\d{2})?(?:\s*[ap]m)?)\]\s+(.*)$/i;
+
+      const messages = [];
+      let current = null;
+
+      for (const line of lines) {
+        const match = line.match(androidRe) || line.match(iosRe);
+        if (match) {
+          if (current) messages.push(current);
+          const dateStr = match[1];
+          const timeStr = match[2];
+          const rest = match[3];
+          const colonIdx = rest.indexOf(': ');
+
+          let sender = 'System';
+          let text = rest;
+          let isSystem = false;
+
+          if (colonIdx > 0) {
+            sender = rest.slice(0, colonIdx).trim();
+            text = rest.slice(colonIdx + 2);
+          } else {
+            isSystem = true;
+          }
+
+          const dateObj = parseWhatsAppDate(dateStr, timeStr);
+          current = {
+            id: messages.length + 1,
+            dateStr,
+            timeStr,
+            dateObj,
+            isoDate: toIsoDate(dateObj),
+            sender,
+            text,
+            isSystem
+          };
+        } else if (current) {
+          current.text += '\n' + line;
+        }
+      }
+      if (current) messages.push(current);
+
+      // Classify message attributes
+      return messages.map((m) => {
+        const lower = m.text.toLowerCase();
+        const isMedia = /<media omitted>|image omitted|video omitted|audio omitted|sticker omitted|gif omitted|document omitted/i.test(lower);
+        const isDeleted = /this message was deleted|you deleted this message/i.test(lower);
+        const hasLink = /https?:\/\/[^\s]+/i.test(m.text);
+        const wordCount = m.isSystem || isMedia || isDeleted
+          ? 0
+          : m.text.trim().split(/\s+/).filter(Boolean).length;
+        return { ...m, isMedia, isDeleted, hasLink, wordCount };
+      });
+    }
+
+    function loadChatData(rawText, name) {
+      const parsed = parseWhatsAppText(rawText);
+      if (parsed.length === 0) {
+        showToast('Could not detect WhatsApp messages in this file.');
+        return;
+      }
+
+      state.allMessages = parsed;
+      state.datasetName = name;
+      state.selectedSenders.clear();
+      state.renderLimit = 200;
+
+      // Build sender list sorted by message count
+      const counts = new Map();
+      for (const m of parsed) {
+        if (m.isSystem) continue;
+        counts.set(m.sender, (counts.get(m.sender) || 0) + 1);
+      }
+
+      state.senders = Array.from(counts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .map(([senderName, count], idx) => ({
+          name: senderName,
+          count,
+          colorClass: SENDER_COLORS[idx % SENDER_COLORS.length]
+        }));
+
+      el('datasetBadge').textContent = name;
+      el('datasetBadge').classList.remove('hidden');
+
+      // Reset date filters to dataset bounds? Keep empty so user sees all
+      el('dateFrom').value = '';
+      el('dateTo').value = '';
+      state.dateFrom = '';
+      state.dateTo = '';
+
+      applyFilters();
+      showToast(`Loaded ${parsed.length.toLocaleString()} messages from ${state.senders.length} senders`);
+    }
+
+    function applyFilters() {
+      const q = state.searchQuery.trim().toLowerCase();
+
+      let list = state.allMessages.filter((m) => {
+        if (!state.showSystem && m.isSystem) return false;
+        if (state.selectedSenders.size > 0) {
+          if (m.isSystem || !state.selectedSenders.has(m.sender)) return false;
+        }
+        if (state.typeFilter === 'text' && (m.isMedia || m.isDeleted || m.isSystem)) return false;
+        if (state.typeFilter === 'media' && !m.isMedia) return false;
+        if (state.typeFilter === 'links' && !m.hasLink) return false;
+        if (state.typeFilter === 'deleted' && !m.isDeleted) return false;
+
+        if (state.dateFrom && m.isoDate && m.isoDate < state.dateFrom) return false;
+        if (state.dateTo && m.isoDate && m.isoDate > state.dateTo) return false;
+
+        if (q) {
+          const inText = m.text.toLowerCase().includes(q);
+          const inSender = m.sender.toLowerCase().includes(q);
+          if (!inText && !inSender) return false;
+        }
+        return true;
+      });
+
+      if (state.sortOrder === 'desc') {
+        list = list.slice().reverse();
+      }
+
+      state.filteredMessages = list;
+      renderSenderPills();
+      renderStats();
+      renderFeed();
+      if (state.activeTab === 'insights') {
+        renderInsights();
+      }
+    }
+
+    function renderSenderPills() {
+      const container = el('senderPills');
+      const totalNonSystem = state.allMessages.filter((m) => !m.isSystem).length;
+
+      const allActive = state.selectedSenders.size === 0;
+      let html = `
+        <button type="button" data-sender="__ALL__"
+          class="shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition border ${
+            allActive
+              ? 'bg-wa-teal text-white border-wa-teal shadow-xs'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-transparent hover:bg-slate-200 dark:hover:bg-slate-700'
+          }">
+          All (${totalNonSystem})
+        </button>
+      `;
+
+      for (const s of state.senders) {
+        const active = state.selectedSenders.has(s.name);
+        html += `
+          <button type="button" data-sender="${escapeHtml(s.name)}"
+            class="shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition border ${
+              active
+                ? 'bg-wa-teal text-white border-wa-teal shadow-xs'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-transparent hover:bg-slate-200 dark:hover:bg-slate-700'
+            }">
+            ${escapeHtml(s.name)} <span class="opacity-75">(${s.count})</span>
+          </button>
+        `;
+      }
+      container.innerHTML = html;
+    }
+
+    function renderStats() {
+      const total = state.allMessages.length;
+      const shown = state.filteredMessages.length;
+      const words = state.filteredMessages.reduce((acc, m) => acc + m.wordCount, 0);
+
+      el('statShowing').textContent = `Showing ${shown.toLocaleString()} of ${total.toLocaleString()}`;
+      el('statWords').textContent = `${words.toLocaleString()} words`;
+
+      const hasFilters =
+        state.selectedSenders.size > 0 ||
+        state.searchQuery.trim() !== '' ||
+        state.typeFilter !== 'all' ||
+        state.dateFrom !== '' ||
+        state.dateTo !== '';
+
+      el('clearFiltersBtn').classList.toggle('hidden', !hasFilters);
+
+      const parts = [];
+      if (state.selectedSenders.size > 0) {
+        parts.push(`Sender: ${Array.from(state.selectedSenders).join(', ')}`);
+      }
+      if (state.typeFilter !== 'all') parts.push(`Type: ${state.typeFilter}`);
+      if (state.searchQuery.trim()) parts.push(`"${state.searchQuery.trim()}"`);
+      el('activeFilterSummary').textContent = parts.length ? parts.join(' • ') : 'No active filters';
+    }
+
+    function formatMessageBody(text, query) {
+      let safe = escapeHtml(text);
+      // Linkify URLs
+      safe = safe.replace(/(https?:\/\/[^\s&<]+)/gi, (url) => {
+        return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="underline text-sky-600 dark:text-sky-400 break-all">${url}</a>`;
+      });
+      // Highlight search term (avoiding inside HTML tags)
+      if (query) {
+        const escapedQ = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const re = new RegExp(`(${escapedQ})(?![^<]*>)`, 'gi');
+        safe = safe.replace(re, '<mark>$1</mark>');
+      }
+      return safe.replace(/\n/g, '<br>');
+    }
+
+    function getSenderColor(name) {
+      const found = state.senders.find((s) => s.name === name);
+      return found ? found.colorClass : 'text-emerald-700 dark:text-emerald-400';
+    }
+
+    function renderFeed() {
+      const feed = el('chatFeed');
+      const items = state.filteredMessages;
+
+      if (items.length === 0) {
+        feed.innerHTML = `
+          <div class="m-auto text-center py-12 px-4 max-w-sm">
+            <div class="w-12 h-12 rounded-2xl bg-white/80 dark:bg-slate-800 mx-auto mb-3 flex items-center justify-center text-slate-400">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              </svg>
+            </div>
+            <p class="font-semibold text-sm text-slate-700 dark:text-slate-200">No messages match your filters</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Try clearing your keyword search, date range, or selecting another sender.</p>
+          </div>
+        `;
+        el('loadMoreWrap').classList.add('hidden');
+        return;
+      }
+
+      const slice = items.slice(0, state.renderLimit);
+      const q = state.searchQuery.trim();
+      let lastDate = '';
+      let html = '';
+
+      for (const m of slice) {
+        if (m.dateStr && m.dateStr !== lastDate) {
+          lastDate = m.dateStr;
+          html += `
+            <div class="flex justify-center my-1.5">
+              <span class="px-3 py-1 rounded-lg bg-white/90 dark:bg-slate-800/90 text-[11px] font-medium text-slate-600 dark:text-slate-300 shadow-xs">
+                ${escapeHtml(m.dateStr)}
+              </span>
+            </div>
+          `;
+        }
+
+        if (m.isSystem) {
+          html += `
+            <div class="flex justify-center my-0.5">
+              <span class="px-3 py-1 rounded-lg bg-amber-100/90 dark:bg-amber-950/60 text-[11px] text-amber-900 dark:text-amber-200 text-center max-w-md shadow-xs">
+                ${escapeHtml(m.text)}
+              </span>
+            </div>
+          `;
+          continue;
+        }
+
+        const isFirstSelected = state.selectedSenders.size === 1 && state.selectedSenders.has(m.sender);
+        const bubbleBg = isFirstSelected
+          ? 'bg-wa-light dark:bg-wa-darkSelf ml-auto'
+          : 'bg-white dark:bg-wa-darkBubble mr-auto';
+
+        const badge = m.isMedia
+          ? `<span class="inline-block px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-[10px] font-semibold text-slate-600 dark:text-slate-300 mb-1">Media</span>`
+          : m.isDeleted
+          ? `<span class="inline-block px-1.5 py-0.5 rounded bg-rose-50 dark:bg-rose-950/50 text-[10px] font-semibold text-rose-600 dark:text-rose-300 mb-1">Deleted</span>`
+          : '';
+
+        html += `
+          <div class="max-w-[88%] sm:max-w-[75%] rounded-2xl px-3.5 py-2 shadow-xs ${bubbleBg}">
+            <div class="flex items-baseline justify-between gap-3 mb-0.5">
+              <button type="button" data-quick-sender="${escapeHtml(m.sender)}" class="text-xs font-bold hover:underline text-left ${getSenderColor(m.sender)}">
+                ${escapeHtml(m.sender)}
+              </button>
+              <span class="text-[10px] text-slate-400 dark:text-slate-400 shrink-0">${escapeHtml(m.timeStr)}</span>
+            </div>
+            ${badge}
+            <div class="text-xs sm:text-sm leading-relaxed text-slate-800 dark:text-slate-100 break-words">
+              ${formatMessageBody(m.text, q)}
+            </div>
+          </div>
+        `;
+      }
+
+      feed.innerHTML = html;
+
+      const remaining = items.length - slice.length;
+      if (remaining > 0) {
+        el('loadMoreWrap').classList.remove('hidden');
+        el('loadMoreBtn').textContent = `Load more (${remaining.toLocaleString()} remaining)`;
+      } else {
+        el('loadMoreWrap').classList.add('hidden');
+      }
+    }
+
+    function renderInsights() {
+      const items = state.filteredMessages.filter((m) => !m.isSystem);
+
+      // Sender aggregation on filtered set
+      const map = new Map();
+      const hours = new Array(24).fill(0);
+
+      for (const m of items) {
+        if (!map.has(m.sender)) {
+          map.set(m.sender, { name: m.sender, count: 0, words: 0, media: 0, links: 0 });
+        }
+        const entry = map.get(m.sender);
+        entry.count += 1;
+        entry.words += m.wordCount;
+        if (m.isMedia) entry.media += 1;
+        if (m.hasLink) entry.links += 1;
+
+        if (m.dateObj) {
+          hours[m.dateObj.getHours()] += 1;
+        }
+      }
+
+      const sortedSenders = Array.from(map.values()).sort((a, b) => b.count - a.count);
+      const top10 = sortedSenders.slice(0, 10);
+
+      // Table
+      const tbody = el('participantTableBody');
+      if (sortedSenders.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-slate-400">No messages to analyze</td></tr>`;
+      } else {
+        tbody.innerHTML = sortedSenders
+          .map(
+            (s) => `
+            <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+              <td class="py-2 pr-3 font-semibold ${getSenderColor(s.name)}">${escapeHtml(s.name)}</td>
+              <td class="py-2 px-3 text-right font-medium">${s.count.toLocaleString()}</td>
+              <td class="py-2 px-3 text-right text-slate-600 dark:text-slate-300">${s.words.toLocaleString()}</td>
+              <td class="py-2 px-3 text-right text-slate-600 dark:text-slate-300">${s.media.toLocaleString()}</td>
+              <td class="py-2 px-3 text-right text-slate-600 dark:text-slate-300">${s.links.toLocaleString()}</td>
+              <td class="py-2 pl-3 text-right">
+                <button type="button" data-isolate-sender="${escapeHtml(s.name)}" class="text-xs font-semibold text-wa-teal dark:text-emerald-400 hover:underline">
+                  Filter
+                </button>
+              </td>
+            </tr>`
+          )
+          .join('');
+      }
+
+      // Charts
+      const isDark = document.documentElement.classList.contains('dark');
+      const textColor = isDark ? '#cbd5e1' : '#475569';
+      const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+
+      if (senderChartInstance) senderChartInstance.destroy();
+      senderChartInstance = new Chart(el('senderChart'), {
+        type: 'bar',
+        data: {
+          labels: top10.map((s) => s.name),
+          datasets: [{
+            label: 'Messages',
+            data: top10.map((s) => s.count),
+            backgroundColor: '#008069',
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: textColor }, grid: { display: false } },
+            y: { beginAtZero: true, ticks: { color: textColor, precision: 0 }, grid: { color: gridColor } }
+          }
+        }
+      });
+
+      if (hourChartInstance) hourChartInstance.destroy();
+      hourChartInstance = new Chart(el('hourChart'), {
+        type: 'line',
+        data: {
+          labels: hours.map((_, h) => `${String(h).padStart(2, '0')}:00`),
+          datasets: [{
+            label: 'Messages',
+            data: hours,
+            borderColor: '#0ea5e9',
+            backgroundColor: 'rgba(14, 165, 233, 0.15)',
+            fill: true,
+            tension: 0.35,
+            pointRadius: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: textColor, maxTicksLimit: 8 }, grid: { display: false } },
+            y: { beginAtZero: true, ticks: { color: textColor, precision: 0 }, grid: { color: gridColor } }
+          }
+        }
+      });
+    }
+
+    async function handleFile(file) {
+      if (!file) return;
+      const name = file.name;
+      if (name.toLowerCase().endsWith('.zip')) {
+        try {
+          const zip = await JSZip.loadAsync(file);
+          const txtEntry = Object.values(zip.files).find(
+            (f) => !f.dir && f.name.toLowerCase().endsWith('.txt')
+          );
+          if (!txtEntry) {
+            showToast('No .txt chat file found inside this .zip archive.');
+            return;
+          }
+          const content = await txtEntry.async('string');
+          loadChatData(content, name.replace(/\.zip$/i, ''));
+        } catch (err) {
+          showToast('Failed to read .zip file.');
+        }
+      } else {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          loadChatData(e.target.result, name.replace(/\.txt$/i, ''));
+        };
+        reader.readAsText(file);
+      }
+    }
+
+    function buildPlainExport() {
+      return state.filteredMessages
+        .map((m) =>
+          m.isSystem
+            ? `${m.dateStr}, ${m.timeStr} - ${m.text}`
+            : `${m.dateStr}, ${m.timeStr} - ${m.sender}: ${m.text}`
+        )
+        .join('\n');
+    }
+
+    // Event Wiring
+    el('fileInput').addEventListener('change', (e) => {
+      if (e.target.files[0]) handleFile(e.target.files[0]);
+      e.target.value = '';
+    });
+
+    const dz = el('dropZone');
+    ['dragenter', 'dragover'].forEach((evt) => {
+      dz.addEventListener(evt, (e) => {
+        e.preventDefault();
+        dz.classList.add('ring-2', 'ring-wa-teal');
+      });
+    });
+    ['dragleave', 'drop'].forEach((evt) => {
+      dz.addEventListener(evt, (e) => {
+        e.preventDefault();
+        dz.classList.remove('ring-2', 'ring-wa-teal');
+      });
+    });
+    dz.addEventListener('drop', (e) => {
+      const file = e.dataTransfer.files[0];
+      if (file) handleFile(file);
+    });
+
+    el('hideDropBtn').addEventListener('click', () => dz.classList.add('hidden'));
+    el('loadSampleBtn').addEventListener('click', () => loadChatData(SAMPLE_CHAT, 'Sample Group Chat'));
+
+    // Sender pills click delegation
+    el('senderPills').addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-sender]');
+      if (!btn) return;
+      const sender = btn.getAttribute('data-sender');
+      if (sender === '__ALL__') {
+        state.selectedSenders.clear();
+      } else if (state.multiSelect) {
+        if (state.selectedSenders.has(sender)) {
+          state.selectedSenders.delete(sender);
+        } else {
+          state.selectedSenders.add(sender);
+        }
+      } else {
+        if (state.selectedSenders.size === 1 && state.selectedSenders.has(sender)) {
+          state.selectedSenders.clear();
+        } else {
+          state.selectedSenders.clear();
+          state.selectedSenders.add(sender);
+        }
+      }
+      state.renderLimit = 200;
+      applyFilters();
+    });
+
+    // Quick-click sender name inside chat feed
+    el('chatFeed').addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-quick-sender]');
+      if (!btn) return;
+      const sender = btn.getAttribute('data-quick-sender');
+      state.selectedSenders.clear();
+      state.selectedSenders.add(sender);
+      state.renderLimit = 200;
+      applyFilters();
+      showToast(`Filtered to ${sender}`);
+    });
+
+    // Quick-click filter inside insights table
+    el('participantTableBody').addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-isolate-sender]');
+      if (!btn) return;
+      const sender = btn.getAttribute('data-isolate-sender');
+      state.selectedSenders.clear();
+      state.selectedSenders.add(sender);
+      switchTab('messages');
+      applyFilters();
+      showToast(`Filtered to ${sender}`);
+    });
+
+    el('multiSelectToggle').addEventListener('change', (e) => {
+      state.multiSelect = e.target.checked;
+    });
+
+    el('searchInput').addEventListener('input', (e) => {
+      state.searchQuery = e.target.value;
+      el('clearSearchBtn').classList.toggle('hidden', !state.searchQuery);
+      state.renderLimit = 200;
+      applyFilters();
+    });
+
+    el('clearSearchBtn').addEventListener('click', () => {
+      el('searchInput').value = '';
+      state.searchQuery = '';
+      el('clearSearchBtn').classList.add('hidden');
+      applyFilters();
+    });
+
+    el('typeFilter').addEventListener('change', (e) => {
+      state.typeFilter = e.target.value;
+      state.renderLimit = 200;
+      applyFilters();
+    });
+
+    el('dateFrom').addEventListener('change', (e) => {
+      state.dateFrom = e.target.value;
+      state.renderLimit = 200;
+      applyFilters();
+    });
+
+    el('dateTo').addEventListener('change', (e) => {
+      state.dateTo = e.target.value;
+      state.renderLimit = 200;
+      applyFilters();
+    });
+
+    el('sortOrder').addEventListener('change', (e) => {
+      state.sortOrder = e.target.value;
+      applyFilters();
+    });
+
+    el('showSystemToggle').addEventListener('change', (e) => {
+      state.showSystem = e.target.checked;
+      applyFilters();
+    });
+
+    el('clearFiltersBtn').addEventListener('click', () => {
+      state.selectedSenders.clear();
+      state.searchQuery = '';
+      state.typeFilter = 'all';
+      state.dateFrom = '';
+      state.dateTo = '';
+      el('searchInput').value = '';
+      el('clearSearchBtn').classList.add('hidden');
+      el('typeFilter').value = 'all';
+      el('dateFrom').value = '';
+      el('dateTo').value = '';
+      state.renderLimit = 200;
+      applyFilters();
+    });
+
+    el('loadMoreBtn').addEventListener('click', () => {
+      state.renderLimit += 200;
+      renderFeed();
+    });
+
+    function switchTab(tab) {
+      state.activeTab = tab;
+      const isMsg = tab === 'messages';
+      el('messagesView').classList.toggle('hidden', !isMsg);
+      el('insightsView').classList.toggle('hidden', isMsg);
+      el('insightsView').classList.toggle('grid', !isMsg);
+
+      el('tabMessages').className = isMsg
+        ? 'px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm transition'
+        : 'px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition';
+      el('tabInsights').className = !isMsg
+        ? 'px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm transition'
+        : 'px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition';
+
+      if (!isMsg) renderInsights();
+    }
+
+    el('tabMessages').addEventListener('click', () => switchTab('messages'));
+    el('tabInsights').addEventListener('click', () => switchTab('insights'));
+
+    // Copy & Export
+    el('copyFilteredBtn').addEventListener('click', async () => {
+      const text = buildPlainExport();
+      if (!text) {
+        showToast('Nothing to copy');
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast(`Copied ${state.filteredMessages.length} messages`);
+      } catch {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast(`Copied ${state.filteredMessages.length} messages`);
+      }
+    });
+
+    el('exportTxtBtn').addEventListener('click', () => {
+      const text = buildPlainExport();
+      if (!text) {
+        showToast('Nothing to export');
+        return;
+      }
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const senderTag = state.selectedSenders.size === 1
+        ? `_${Array.from(state.selectedSenders)[0].replace(/\s+/g, '_')}`
+        : '_filtered';
+      a.href = url;
+      a.download = `${state.datasetName.replace(/\s+/g, '_')}${senderTag}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Downloaded filtered .txt');
+    });
+
+    // Paste Modal
+    el('pasteBtn').addEventListener('click', () => el('pasteModal').classList.remove('hidden'));
+    el('closePasteModal').addEventListener('click', () => el('pasteModal').classList.add('hidden'));
+    el('cancelPasteBtn').addEventListener('click', () => el('pasteModal').classList.add('hidden'));
+    el('parsePasteBtn').addEventListener('click', () => {
+      const raw = el('pasteTextarea').value.trim();
+      if (!raw) {
+        showToast('Please paste some WhatsApp chat text first.');
+        return;
+      }
+      el('pasteModal').classList.add('hidden');
+      loadChatData(raw, 'Pasted Chat');
+    });
+
+    // Theme Toggle
+    el('themeToggle').addEventListener('click', () => {
+      const isDark = document.documentElement.classList.toggle('dark');
+      el('sunIcon').classList.toggle('hidden', !isDark);
+      el('moonIcon').classList.toggle('hidden', isDark);
+      try { localStorage.setItem('chatlens_theme', isDark ? 'dark' : 'light'); } catch {}
+      if (state.activeTab === 'insights') renderInsights();
+    });
+
+    // Initialize
+    window.addEventListener('DOMContentLoaded', () => {
+      try {
+        if (localStorage.getItem('chatlens_theme') === 'dark') {
+          document.documentElement.classList.add('dark');
+          el('sunIcon').classList.remove('hidden');
+          el('moonIcon').classList.add('hidden');
+        }
+      } catch {}
+      loadChatData(SAMPLE_CHAT, 'Sample Group Chat');
+    });
+  </script>
+</body>
+</html>
