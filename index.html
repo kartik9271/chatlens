@@ -68,8 +68,8 @@
         <div class="min-w-0">
           <div class="flex items-center gap-2">
             <h1 class="font-bold text-base sm:text-lg tracking-tight truncate">ChatLens</h1>
-            <span id="datasetBadge" class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-white/15 text-emerald-50 truncate max-w-[180px]">
-              Sample Group Chat
+            <span id="datasetBadge" class="hidden items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-white/15 text-emerald-50 truncate max-w-[180px]">
+              No chat loaded
             </span>
           </div>
           <p class="text-[11px] text-emerald-100/80 hidden sm:block">100% local in-browser WhatsApp chat filter</p>
@@ -84,6 +84,13 @@
           <span>Import Chat</span>
         </label>
         <input id="fileInput" type="file" accept=".txt,.zip" class="hidden" />
+
+        <button id="resetHomeBtn" type="button" class="hidden inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white text-xs sm:text-sm font-medium transition" title="Load a different chat">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+          </svg>
+          <span class="hidden md:inline">Home</span>
+        </button>
 
         <button id="pasteBtn" type="button" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white text-xs sm:text-sm font-medium transition" title="Paste raw chat text">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -107,28 +114,70 @@
   <!-- Main Workspace -->
   <main class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-5 py-4 flex flex-col gap-4">
 
-    <!-- Drag & Drop Banner (collapsible) -->
-    <div id="dropZone" class="border-2 border-dashed border-emerald-500/40 dark:border-emerald-500/30 bg-emerald-50/70 dark:bg-emerald-950/20 rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition">
-      <div class="flex items-start sm:items-center gap-3">
-        <div class="w-9 h-9 rounded-xl bg-emerald-600/15 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-          </svg>
+    <!-- Engaging Welcome Screen (shown before any chat is loaded) -->
+    <section id="welcomeScreen" class="flex-1 flex flex-col items-center justify-center py-6 sm:py-10">
+      <div class="w-full max-w-3xl flex flex-col gap-6">
+
+        <!-- Hero Card + Dropzone -->
+        <div id="dropZone" class="relative overflow-hidden rounded-3xl border-2 border-dashed border-emerald-500/50 dark:border-emerald-400/40 bg-gradient-to-br from-white via-emerald-50/60 to-teal-50/80 dark:from-wa-darkPanel dark:via-emerald-950/30 dark:to-slate-900 p-6 sm:p-10 text-center shadow-lg transition-all duration-200">
+          <div class="mx-auto w-16 h-16 rounded-2xl bg-wa-teal/10 dark:bg-emerald-500/15 text-wa-teal dark:text-emerald-400 flex items-center justify-center mb-4 shadow-xs">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+            </svg>
+          </div>
+
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 mb-3">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            100% Private &bull; Runs Offline in Your Browser
+          </span>
+
+          <h2 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white mb-2">
+            Filter Any WhatsApp Group Chat in Seconds
+          </h2>
+          <p class="text-sm sm:text-base text-slate-600 dark:text-slate-300 max-w-xl mx-auto mb-6">
+            Drop your exported <code class="px-1.5 py-0.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold">.txt</code> or <code class="px-1.5 py-0.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold">.zip</code> file here to isolate messages by sender, search keywords, and explore group insights.
+          </p>
+
+          <div class="flex flex-wrap items-center justify-center gap-3">
+            <label for="fileInput" class="cursor-pointer inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-wa-teal hover:bg-wa-darkTeal text-white font-semibold text-sm shadow-md hover:shadow-lg transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+              </svg>
+              <span>Choose .txt or .zip File</span>
+            </label>
+            <button id="welcomePasteBtn" type="button" class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 font-semibold text-sm shadow-xs transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+              </svg>
+              <span>Paste Chat Text</span>
+            </button>
+          </div>
         </div>
-        <div>
-          <p class="text-sm font-semibold text-slate-800 dark:text-slate-100">Drop your WhatsApp <code class="px-1.5 py-0.5 rounded bg-white/80 dark:bg-slate-800 text-xs">.txt</code> or <code class="px-1.5 py-0.5 rounded bg-white/80 dark:bg-slate-800 text-xs">.zip</code> export here</p>
-          <p class="text-xs text-slate-600 dark:text-slate-400">WhatsApp &rarr; Group Info &rarr; Export Chat &rarr; Without Media. Runs 100% offline in your browser.</p>
+
+        <!-- 3-Step How It Works + Feature Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div class="bg-white dark:bg-wa-darkPanel rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-xs">
+            <div class="text-xs font-bold text-wa-teal dark:text-emerald-400 mb-1">STEP 1 &bull; EXPORT</div>
+            <p class="text-sm font-semibold text-slate-800 dark:text-slate-100">Export from WhatsApp</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Open any group &rarr; Group Info &rarr; Export Chat &rarr; Without Media.</p>
+          </div>
+          <div class="bg-white dark:bg-wa-darkPanel rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-xs">
+            <div class="text-xs font-bold text-wa-teal dark:text-emerald-400 mb-1">STEP 2 &bull; FILTER</div>
+            <p class="text-sm font-semibold text-slate-800 dark:text-slate-100">Pick Any Person</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Click a sender pill to isolate their messages, links, or dates.</p>
+          </div>
+          <div class="bg-white dark:bg-wa-darkPanel rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-xs">
+            <div class="text-xs font-bold text-wa-teal dark:text-emerald-400 mb-1">STEP 3 &bull; ANALYZE</div>
+            <p class="text-sm font-semibold text-slate-800 dark:text-slate-100">Insights &amp; Export</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">View top-sender charts and download filtered messages as .txt.</p>
+          </div>
         </div>
+
       </div>
-      <div class="flex items-center gap-2 self-end sm:self-center">
-        <button id="loadSampleBtn" type="button" class="text-xs font-medium px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
-          Reset Sample
-        </button>
-        <button id="hideDropBtn" type="button" class="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 px-2 py-1.5" title="Hide banner">
-          Dismiss
-        </button>
-      </div>
-    </div>
+    </section>
+
+    <!-- Active Chat Workspace (hidden until a chat is imported) -->
+    <div id="workspaceArea" class="hidden flex-col gap-4 flex-1">
 
     <!-- View Switcher + Summary Stats -->
     <div class="flex flex-wrap items-center justify-between gap-3">
@@ -285,6 +334,7 @@
         </table>
       </div>
     </section>
+    </div>
 
   </main>
 
@@ -521,6 +571,11 @@
 
       el('datasetBadge').textContent = name;
       el('datasetBadge').classList.remove('hidden');
+      el('datasetBadge').classList.add('sm:inline-flex');
+      el('welcomeScreen').classList.add('hidden');
+      el('workspaceArea').classList.remove('hidden');
+      el('workspaceArea').classList.add('flex');
+      el('resetHomeBtn').classList.remove('hidden');
 
       // Reset date filters to dataset bounds? Keep empty so user sees all
       el('dateFrom').value = '';
@@ -898,8 +953,19 @@
       if (file) handleFile(file);
     });
 
-    el('hideDropBtn').addEventListener('click', () => dz.classList.add('hidden'));
-    el('loadSampleBtn').addEventListener('click', () => loadChatData(SAMPLE_CHAT, 'Sample Group Chat'));
+    el('welcomePasteBtn').addEventListener('click', () => el('pasteModal').classList.remove('hidden'));
+    el('resetHomeBtn').addEventListener('click', () => {
+      state.allMessages = [];
+      state.filteredMessages = [];
+      state.senders = [];
+      state.selectedSenders.clear();
+      el('workspaceArea').classList.add('hidden');
+      el('workspaceArea').classList.remove('flex');
+      el('welcomeScreen').classList.remove('hidden');
+      el('resetHomeBtn').classList.add('hidden');
+      el('datasetBadge').classList.add('hidden');
+      el('datasetBadge').classList.remove('sm:inline-flex');
+    });
 
     // Sender pills click delegation
     el('senderPills').addEventListener('click', (e) => {
@@ -1108,7 +1174,6 @@
           el('moonIcon').classList.add('hidden');
         }
       } catch {}
-      loadChatData(SAMPLE_CHAT, 'Sample Group Chat');
     });
   </script>
 </body>
